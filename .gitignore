@@ -1,0 +1,15 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+bin/
+.idea/
+logs/
+reports/
+.auth
+.playwright-cli/
+.python-version
+node_modules/
+package-lock.json
+package.json
