@@ -1,0 +1,101 @@
+name: E2E eShop AppHost
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SSL_CERT_DIR: "$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+      WEB_BASE_URL: http://localhost:5045
+      API_BASE_URL: http://localhost:5045
+    steps:
+      - name: Checkout QA framework
+        uses: actions/checkout@v4
+
+      - name: Checkout eShop
+        uses: actions/checkout@v4
+        with:
+          repository: CodeCaballero/eShop
+          path: eshop
+          ref: main
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-
+
+      - name: Install Python deps
+        run: uv sync --locked
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Trust .NET HTTPS dev certificate
+        run: |
+          dotnet dev-certs https --clean
+          dotnet dev-certs https --trust || true
+
+      - name: Start eShop AppHost
+        working-directory: eshop
+        env:
+          ESHOP_USE_HTTP_ENDPOINTS: '1'
+        run: |
+          dotnet run --project src/eShop.AppHost/eShop.AppHost.csproj > ../apphost.log 2>&1 &
+          echo $! > ../apphost.pid
+          echo "Waiting for WebApp on http://localhost:5045 ..."
+          for i in $(seq 1 90); do
+            if curl -fsS -o /dev/null http://localhost:5045/; then
+              echo "WebApp is up"
+              exit 0
+            fi
+            echo "Attempt $i/90"
+            sleep 5
+          done
+          echo "AppHost failed to become ready"
+          tail -n 200 ../apphost.log || true
+          exit 1
+
+      - name: Run web E2E
+        run: |
+          uv run pytest test/web/ -v \
+            --tracing=retain-on-failure \
+            --screenshot=only-on-failure \
+            --video=retain-on-failure
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures
+          path: |
+            test-results/
+            apphost.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Stop AppHost
+        if: always()
+        run: |
+          if [ -f apphost.pid ]; then
+            kill "$(cat apphost.pid)" || true
+          fi

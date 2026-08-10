@@ -12,7 +12,6 @@ dependencies = [
     "allure-python-commons==2.16.0",
     "playwright==1.60.0",
     "pytest==9.0.3",
-    "pytest-env==1.6.0",
     "pytest-playwright==0.8.0",
     "pytest-xdist==3.8.0",
     "requests==2.34.2",
@@ -32,11 +31,6 @@ dev = []
 [tool.pytest.ini_options]
 testpaths = ["test"]
 pythonpath = ["."]
-env = [
-    "WEB_BASE_URL=https://localhost:7298",
-    "API_BASE_URL=http://localhost:3001",
-]
-
 
 markers = [
     "reset_db: reset the database after scenarios tagged with @reset_db",
