@@ -5,7 +5,8 @@ from test.web.pages.login_page import LoginPage
 
 
 def test_successful_login_with_valid_credentials(page):
-    login_user(page, "alice", get_password_user("alice"))
+    for i in range(1, 10):
+        login_user(page, "alice", get_password_user("alice"))
 
 
 def test_login_storage_state(browser):
