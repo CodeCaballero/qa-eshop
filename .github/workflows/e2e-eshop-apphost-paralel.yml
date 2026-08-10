@@ -1,4 +1,4 @@
-name: E2E eShop AppHost
+name: E2E eShop AppHost paralel
 
 on:
   workflow_dispatch:
@@ -7,6 +7,10 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     env:
       SSL_CERT_DIR: "$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
       WEB_BASE_URL: http://localhost:5045
@@ -78,6 +82,8 @@ jobs:
       - name: Run web E2E
         run: |
           uv run pytest test/web/ -v \
+            --splits 2 \
+            --group ${{ matrix.shard }} \
             --tracing=retain-on-failure \
             --screenshot=only-on-failure \
             --video=retain-on-failure
@@ -86,7 +92,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-failures
+          name: e2e-failures-shard-${{ matrix.shard }}
           path: |
             test-results/
             apphost.log
