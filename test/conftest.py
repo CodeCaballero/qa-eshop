@@ -8,3 +8,7 @@ def configure_playwright_test_id_attribute(playwright):
 @pytest.fixture(scope="session")
 def browser_context_args(browser_context_args):
     return {**browser_context_args, "ignore_https_errors": True}
+
+@pytest.fixture(scope="session")
+def authenticated_page(browser_context_options):
+    return {**browser_context_options, "viewport": None}
