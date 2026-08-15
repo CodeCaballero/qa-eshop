@@ -13,3 +13,4 @@ reports/
 node_modules/
 package-lock.json
 package.json
+scripts/generate_commit.py
